@@ -1,0 +1,87 @@
+﻿@inject IDialogService DialogService
+@inject Blazored.LocalStorage.ISyncLocalStorageService localStorage
+@using Models;
+@page "/"
+
+<PageTitle>¿Cuánto queda?</PageTitle>
+@if (HitosFuturos != null)
+{
+    <MudGrid>
+        @for (var i = 0; i < HitosFuturos.Count; i++)
+        {
+            @if (HitosFuturos[i].Visible)
+            {
+                var hito = HitosFuturos[i];
+                var id = i;
+                <MudItem xs="12" lg="3" sm="6" md="3" xl="1" xxl="1" Class="ma-2" >
+                    <Hito Ahora="_ahora" Titulo="@hito.Titulo" Imagen="@hito.Imagen"
+                FechaTiempo="@hito.FechaTiempo" Id="id" Cambiar="Configurar" />        
+                </MudItem>
+            }
+
+        }
+    </MudGrid>
+}
+@code
+{
+    [CascadingParameter(Name ="HitosFuturos")] public List<Models.HitoFuturo> HitosFuturos { get; set; }
+
+    private DateTime _ahora=DateTime.Now;
+    private System.Timers.Timer tempo;
+
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            tempo = new System.Timers.Timer(1000);
+            tempo.Elapsed += segundo;
+            tempo.Enabled = true;
+        }
+    }
+
+    private void segundo(Object source, System.Timers.ElapsedEventArgs e)
+    {
+        _ahora = DateTime.Now;
+        StateHasChanged();
+    }
+    private void Configurar(int i) => ConfigurarAsync(i);
+
+    private async Task ConfigurarAsync(int i)
+    {
+        tempo.Enabled=false;
+        var hito = HitosFuturos[i];
+        var parametros = new DialogParameters { 
+            ["HitoFuturo"]= hito,
+            ["VerBorrar"]=true};
+
+         var opciones = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall };
+        var dialogo = DialogService.Show<EditorHitos>("Acontecimiento",parametros,opciones);
+        var resultado = await dialogo.Result;
+        if (!resultado.Cancelled)
+        {
+            var evento = (HitoFuturo)resultado.Data;
+            if (evento.Borrar) HitosFuturos.RemoveAt(i);
+            else HitosFuturos[i] = evento;
+            localStorage.SetItem<List<HitoFuturo>>("Hitos", HitosFuturos);
+            StateHasChanged();
+
+        }
+        tempo.Enabled = true;
+    }
+
+  private int _indiceEvento=0;
+  private void Desliza(SwipeDirection direction)
+    {
+        if (direction == SwipeDirection.LeftToRight)
+        {
+            ++_indiceEvento;
+            StateHasChanged();
+        }
+        else if (direction == SwipeDirection.RightToLeft)
+        {
+            --_indiceEvento;
+            StateHasChanged();
+        } 
+    }
+}

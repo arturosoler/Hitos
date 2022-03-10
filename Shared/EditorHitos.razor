@@ -1,0 +1,118 @@
+﻿@using Models
+@inject IStringLocalizer<Trans> Localizer
+<MudDialog>
+    <DialogContent >
+        <MudTextField @bind-Value="HitoFuturo.Titulo" Placeholder="@Localizer["AyudaDescripcion"]" />
+        <MudDatePicker @bind-Date="Fecha" Culture="System.Globalization.CultureInfo.CurrentCulture" />
+        <MudTimePicker @bind-Time="Hora" />
+        <MudSwipeArea OnSwipe="fotoDesliz">
+            <MudImage Fluid="true" Src="@($"./images/{HitoFuturo.Imagen}")"/>
+        </MudSwipeArea>
+        <MudSlider Value="indiceImagenes" Min="0" Max="Imagenes.Count-1" Step="1" T="int"
+            ValueChanged="FotoBarra" />
+    </DialogContent>
+    <DialogActions>
+        @if (VerBorrar)
+        {
+            <MudIconButton Icon="@Icons.Material.Outlined.Delete" 
+                 OnClick="Borrar"  Color="Color.Warning"/>  
+                 
+        }
+        <MudSpacer/>
+        <MudToggleIconButton @bind-Toggled="HitoFuturo.Visible"
+                Icon="@Icons.Material.Outlined.VisibilityOff" Color="@Color.Warning" 
+                Title="Oculto" 
+                ToggledIcon="@Icons.Material.Outlined.Visibility" ToggledColor="@Color.Success"
+                ToggledTitle="Visible" />
+        <MudSpacer/>
+        <MudIconButton Icon="@Icons.Material.Outlined.Done" Variant="Variant.Filled"
+            OnClick="Guardar" Color="Color.Success"/>
+        <MudIconButton Icon="@Icons.Material.Outlined.Cancel"
+            OnClick="Cancelar"/>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private IDialogService DialogService { get; set; }
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public HitoFuturo HitoFuturo { get; set; }
+    [Parameter] public bool VerBorrar { get; set; }
+
+    DateTime? Fecha;
+    TimeSpan? Hora;
+    private List<string> Imagenes= new List<string>
+        {
+            "charlot.gif",
+            "DanzaDelasHoras.gif",
+            "Dumbledore.gif",
+            "Harold.gif",
+            "ninoGorra.gif",
+            "relojesanimados.gif"
+        };
+    private int indiceImagenes = 0;    
+    protected override void OnParametersSet()
+    {
+        Fecha = new DateTime(HitoFuturo.FechaTiempo.Year,
+                                HitoFuturo.FechaTiempo.Month,
+                                HitoFuturo.FechaTiempo.Day);
+        Hora = HitoFuturo.FechaTiempo - Fecha;
+        if (Imagenes.Contains(HitoFuturo.Imagen))
+            while (Imagenes[indiceImagenes] != HitoFuturo.Imagen)
+                indiceImagenes++;
+        else indiceImagenes = 0;
+        HitoFuturo.Imagen = Imagenes[indiceImagenes];
+
+    }
+    private async Task Borrar()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+             "Confirmación", 
+             "¿Quitamos definitivamente este evento?", 
+             yesText:"Sí", cancelText:"No");
+        if (result != null)
+        {
+            HitoFuturo.Borrar = true;
+            MudDialog.Close(DialogResult.Ok(HitoFuturo));
+        }
+    }
+    private void Cancelar() => MudDialog.Cancel();
+    private void Guardar()
+    {
+        HitoFuturo.FechaTiempo = Fecha.Value + Hora.Value;
+        MudDialog.Close(DialogResult.Ok(HitoFuturo));        
+    }
+
+    private int mod(int x, int m) =>  (x%m + m)%m;
+
+    private void fotoSube()
+    {
+        indiceImagenes = mod(++indiceImagenes, Imagenes.Count);
+        HitoFuturo.Imagen = Imagenes[indiceImagenes];
+    }
+
+    private void fotoBaja()
+    {
+        indiceImagenes = mod(--indiceImagenes, Imagenes.Count);
+        HitoFuturo.Imagen = Imagenes[indiceImagenes];
+    }
+
+    private void FotoBarra(int id)
+    {
+        indiceImagenes = id;
+        HitoFuturo.Imagen=Imagenes[indiceImagenes];
+    }
+    private void fotoDesliz(SwipeDirection direction)
+    {
+        if (direction == SwipeDirection.LeftToRight)
+        {
+            fotoSube();
+            StateHasChanged();
+        }
+        else if (direction == SwipeDirection.RightToLeft)
+        {
+            fotoBaja();
+            StateHasChanged();
+        } 
+    }
+
+}

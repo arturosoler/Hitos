@@ -1,0 +1,82 @@
+﻿@using Models;
+<MudDialog>
+    <DialogContent>
+        @if (HitosFuturos!=null)
+        {
+            <table style="border:0,none;">                 
+                <tbody>
+                    @for (var i=0; i<HitosFuturos.Count; i++)
+                    {
+                        var _titulo = HitosFuturos[i].Titulo;
+                        var id = i;
+                        <tr><td>
+                        <MudIconButton Variant="Variant.Filled" 
+                            Icon="@Icons.Material.Filled.MoveUp" Size="Size.Medium"
+                                Disabled="@(id==0)" OnClick="@(()=>Sube(id))"/>
+                                </td>
+                                <td>
+                        <MudIconButton Variant="Variant.Filled" Icon="@Icons.Material.Filled.MoveDown" Size="Size.Medium"
+                            Disabled="@(id==(HitosFuturos.Count-1))" OnClick="@(()=>Baja(id))"/>
+                                                        </td>
+                                <td>
+                            <MudToggleIconButton @bind-Toggled="HitosFuturos[id].Visible" 
+                        Size="Size.Medium" ToggledSize="Size.Medium"
+                            Icon="@Icons.Material.Outlined.VisibilityOff" Color="@Color.Warning" 
+                            Title="Oculto" 
+                            ToggledIcon="@Icons.Material.Outlined.Visibility" ToggledColor="@Color.Success"
+                            ToggledTitle="Visible"  Variant=Variant.Filled/>
+
+                    </td>
+                    <td style="vertical-align:middle;padding-left:0.5em;">
+                        <MudText Typo="Typo.body1">@_titulo</MudText>
+                    </td>
+                    <td>
+                        <MudIconButton Variant="Variant.Filled" 
+                            Icon="@Icons.Material.Filled.DeleteForever" Size="Size.Medium"
+                            Color="Color.Warning"
+                            OnClick="@(()=>Borra(id))"/>
+                    </td>
+                    </tr>
+                    }            
+                </tbody>
+            </table>
+        }
+    </DialogContent>
+    <DialogActions>
+                <MudIconButton Icon="@Icons.Material.Outlined.Done" Variant="Variant.Filled"
+            OnClick="Guardar" Color="Color.Success"/>
+        <MudIconButton Icon="@Icons.Material.Outlined.Cancel"
+            OnClick="Cancelar"/>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private IDialogService DialogService { get; set; }
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public List<HitoFuturo> HitosFuturos { get; set; }
+    private void Sube (int id)
+    {
+        var tmp = HitosFuturos[id];
+        HitosFuturos.RemoveAt(id);
+        HitosFuturos.Insert(id - 1, tmp);
+        StateHasChanged();
+    }
+    private void Baja (int id)
+    {
+        var tmp = HitosFuturos[id];
+        HitosFuturos.RemoveAt(id);
+        HitosFuturos.Insert(id + 1, tmp);
+        StateHasChanged();
+    }
+
+    private async Task Borra(int id)
+    {
+        HitosFuturos.RemoveAt(id);
+        StateHasChanged();
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+    private void Guardar() => MudDialog.Close(DialogResult.Ok(true));
+
+
+}

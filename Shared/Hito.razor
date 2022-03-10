@@ -1,0 +1,93 @@
+﻿@inject IStringLocalizer<Trans> Localizer
+    <MudCard Elevation="4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                    <MudText Typo="Typo.h6" Align="Align.Left">
+                        @Titulo
+                    </MudText>
+                    <MudDivider />
+            </CardHeaderContent>
+            <CardHeaderActions>
+                 <MudIconButton  Icon="@Icons.Material.Filled.Settings" Color="Color.Default" 
+                    OnClick="Configurar"/>
+            </CardHeaderActions>
+        </MudCardHeader>
+        <MudCardContent>
+            @if (FechaTiempo>Ahora)
+            {
+
+                <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Success">
+                    @_lineaDias
+                </MudText>
+                <MudText Typo="Typo.h5" Align="Align.Center" Color="@(_lineaDias==""?Color.Success:Color.Dark)">
+                    @_lineaTiempo
+                </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.h5"  Align="Align.Center">
+                    @Localizer["Acontecimiento"]
+                </MudText>
+                <MudText Typo="Typo.h5"  Align="Align.Center">
+                    @Localizer["Superado"]
+                </MudText>
+            }
+        </MudCardContent>
+        <MudCardMedia Image="@($"./images/{ImgFecha()}")" Height="300" />
+    </MudCard>
+ 
+
+@code {
+        [Parameter] public int Id{ get; set; }
+        [Parameter] public string Titulo { get; set; }
+        [Parameter] public string Imagen { get; set; }
+        [Parameter] public DateTime FechaTiempo { get; set; }
+        [Parameter] public DateTime Ahora { get; set; }
+        [Parameter] public Action<int> Cambiar{ get; set; }
+
+    private string _lineaDias;
+    private string _lineaTiempo;
+
+    protected override void OnParametersSet()
+    {
+        int annos, meses, dias, horas, minutos,segundos;
+        annos = FechaTiempo.Year - Ahora.Year;
+        if (FechaTiempo > Ahora)
+        {
+            DateTime test_date = Ahora.AddMonths(12 * annos);
+            if (test_date > FechaTiempo)
+            {
+                annos--;
+                test_date = Ahora.AddMonths(12 * annos);
+            }
+
+            // Add meses until we go too far.
+            meses = 0;
+            while (test_date <= FechaTiempo)
+            {
+                meses++;
+                test_date = Ahora.AddMonths(12 * annos + meses);
+            }
+            meses--;
+
+            // Subtract to see how many more days,
+            // hours, minutes, etc. we need.
+            Ahora = Ahora.AddMonths(12 * annos + meses);
+            TimeSpan remainder = FechaTiempo - Ahora;
+            dias = remainder.Days;
+            horas = remainder.Hours;
+            minutos = remainder.Minutes;
+            segundos = remainder.Seconds;
+            _lineaDias ="";
+            if (annos > 0) _lineaDias += $"{annos} {Localizer[(annos > 1 ? "Años": "Año")]} ";
+            if (meses > 0) _lineaDias += $"{meses} {Localizer[(meses > 1 ? "Meses": "Mes")]} ";
+            if (dias > 0) _lineaDias += $"{dias} {Localizer[(dias > 1 ? "Dias" : "Dia")]} ";
+            _lineaTiempo = $"{horas:00}:{minutos:00}:{segundos:00}";
+        }
+        else _lineaDias = "";
+
+
+    }
+    private string ImgFecha()=>(FechaTiempo>Ahora)?Imagen:"fuegos.gif";
+    public void Configurar() => Cambiar(Id);
+}

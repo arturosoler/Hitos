@@ -1,0 +1,157 @@
+﻿@inherits LayoutComponentBase
+@inject Blazored.LocalStorage.ISyncLocalStorageService localStorage
+@inject IDialogService DialogService
+@inject NavigationManager Url
+@inject IStringLocalizer<Trans> Localizer
+@using  System.Globalization
+@using Models;
+
+<MudThemeProvider Theme="MyCustomTheme"/>
+<MudDialogProvider />
+<MudSnackbarProvider />
+<PageTitle>@Localizer["TitApp"]</PageTitle>
+<MudLayout>
+    <MudAppBar Elevation="0">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudText Typo="Typo.h5">@Localizer["TitBarra"]</MudText>
+        <MudSpacer />
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="1">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h5">@Localizer["TitMenu"]</MudText>
+        </MudDrawerHeader>
+        <MudNavMenu>
+            <MudNavLink OnClick="NuevoHito" Icon="@Icons.Material.Filled.Add">
+                @Localizer["Nuevo"]
+            </MudNavLink>
+            <MudNavLink OnClick="Ordenar" Icon="@Icons.Material.Filled.ListAlt">
+                @Localizer["OrdenOcultar"]
+            </MudNavLink>
+            <MudNavGroup Expanded="false" Title="@_lenguajes[CultureInfo.CurrentCulture.Name]">
+                @foreach (var lan in _lenguajes.Keys.Where(l=>l!=CultureInfo.CurrentCulture.Name))
+                {
+                <MudNavLink OnClick="(()=>{SetCultura(lan);})">
+                    @_lenguajes[lan]
+                </MudNavLink>                    
+                }
+            </MudNavGroup>
+        </MudNavMenu>
+    </MudDrawer>
+    <MudMainContent>
+
+            <CascadingValue Name="HitosFuturos" Value="_hitosFuturos">
+                @Body
+            </CascadingValue>
+
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    MudTheme MyCustomTheme = new MudTheme()
+        {
+            Palette = new Palette()
+            {
+                Primary = Colors.Brown.Darken3,
+                Secondary = Colors.Green.Accent4,
+                AppbarBackground = Colors.Grey.Default,
+                Success=Colors.Green.Darken3,
+                Warning=Colors.Red.Darken4
+            }
+
+
+        };
+    //Globalization and localization
+
+    private Dictionary<string, string> _lenguajes = new Dictionary<string, string>
+    {
+        {"es-ES","Español" },
+        {"en-US","English"},
+        {"ca-ES","Catalá"},
+        {"fr-FR","Français"}
+    };
+
+    private void SetCultura(string nombre)
+    {
+        if (CultureInfo.CurrentCulture.Name != nombre)
+        {
+            localStorage.SetItem<string>("Cultura", nombre);
+            Url.NavigateTo(Url.Uri, forceLoad: true);
+        }
+    }
+    //Drawer
+    bool _drawerOpen = false;
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private List<HitoFuturo> _hitosFuturos;
+    protected override void OnInitialized()
+    {
+        if (localStorage.ContainKey("Hitos"))
+            _hitosFuturos = localStorage.GetItem<List<HitoFuturo>>("Hitos");
+        else
+        {
+            _hitosFuturos = new List<HitoFuturo>();
+            _hitosFuturos.Add(new HitoFuturo
+                {
+                    Titulo = Localizer["Próximo año nuevo"],
+                    FechaTiempo = new DateTime(DateTime.Today.Year + 1, 1, 1),
+                    Imagen = "ninoGorra.gif"
+                });
+            localStorage.SetItem<List<HitoFuturo>>("Hitos", _hitosFuturos);
+        }
+    }
+
+    private async Task NuevoHito()
+    {
+        var parametros = new DialogParameters { 
+            ["HitoFuturo"]= new HitoFuturo(),
+            ["VerBorrar"]=false};
+        var opciones = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall };
+        var dialogo = DialogService.Show<EditorHitos>(
+            $"{Localizer["Nuevo"]} {Localizer["Acontecimiento"]}".ToUpper(),
+            parametros,opciones);
+        var resultado = await dialogo.Result;
+        if (!resultado.Cancelled)
+        {
+            _hitosFuturos.Add( (HitoFuturo)resultado.Data);
+            localStorage.SetItem<List<HitoFuturo>>("Hitos", _hitosFuturos);
+            StateHasChanged();
+        }
+        DrawerToggle();
+    }
+
+    private async Task Ordenar()
+    {
+        var parametros = new DialogParameters { ["HitosFuturos"]= _hitosFuturos};
+        var opciones = new DialogOptions { MaxWidth = MaxWidth.Medium };
+        var dialogo = DialogService.Show<Ordenar>(Localizer["OrdenOcultar"].ToString().ToUpper(),parametros,opciones);
+        var result = await dialogo.Result;
+        if (result.Cancelled) 
+            _hitosFuturos = localStorage.GetItem<List<HitoFuturo>>("Hitos");
+        else
+            localStorage.SetItem<List<HitoFuturo>>("Hitos", _hitosFuturos);
+        DrawerToggle();
+    }
+    private async Task ConfigurarAsync(int i)
+    {
+        Console.Write(i);
+        var parametros = new DialogParameters { ["HitoFuturo"]= _hitosFuturos[i],
+            ["VerBorrar"]=false};
+        var opciones = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall };
+        var dialogo = DialogService.Show<EditorHitos>(Localizer["Acontecimiento"].ToString().ToUpper(),parametros,opciones);
+        var resultado = await dialogo.Result;
+        if (!resultado.Cancelled)
+        {
+            var evento = (HitoFuturo)resultado.Data;
+            if (evento.Borrar) _hitosFuturos.RemoveAt(i);
+            else _hitosFuturos[i] = evento;
+            localStorage.SetItem<List<HitoFuturo>>("Hitos", _hitosFuturos);
+            StateHasChanged();
+        }
+    }
+
+
+
+}
